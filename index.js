@@ -13,10 +13,8 @@ app.set('view engine', 'ejs');
 app.use(bodyParser.urlencoded({ extended: true }));
 app.use(express.static("public"));
 
-// Use environment variable for MongoDB connection URL
-const mongoDb_connect_url = process.env.MONGODB_URI || "mongodb+srv://Admin-seiha:Seiha123@cluster0.8fulo.mongodb.net/todolistD"; // Default for local testing
+const mongoDb_connect_url = process.env.MONGODB_URI || "mongodb+srv://Admin-seiha:Seiha123@cluster0.8fulo.mongodb.net/todolistD";
 
-// Connect to MongoDB
 mongoose.connect(mongoDb_connect_url)
   .then(() => {
     console.log("Successfully connected to MongoDB");
@@ -25,55 +23,30 @@ mongoose.connect(mongoDb_connect_url)
     console.error("MongoDB connection error:", error);
   });
 
-
-//Schema 1: Create item Schema
 const itemsSchema = new mongoose.Schema({
-  name: {
-    type: String,
-    required: true
-  }
-
+  name: { type: String, required: true }
 });
 
-// Create the item Model
 const Item = mongoose.model("Item", itemsSchema);
 
-//Array of the document to insert to the database 
 const ItemsData = [
-  { name: "Welcome to your Todo List !" },
+  { name: "Welcome to your Todo List!" },
   { name: "Hit the + button to add a new item." },
   { name: "<-- Hit this to delete an item." }
 ];
 
-//Schema 2: for customListName 
 const listSchema = new mongoose.Schema({
   name: String,
   items: [itemsSchema]
 });
 
-// Model 2: 
 const List = mongoose.model("List", listSchema);
 
-
-// // Find and log items
-// Item.find({})
-//   .then(foundItems => {
-//     console.log(foundItems);
-//   })
-//   .catch((err) => {
-//     console.log(err);
-//   });
-
-
-app.get("/", function (req, res) {
-
-  // Find and log items
+app.get("/", (req, res) => {
   Item.find({})
-
     .then(foundItems => {
-      // if there is any items, insert the doc to the database 
       if (foundItems.length === 0) {
-        Item.insertMany(ItemsData)
+        return Item.insertMany(ItemsData)
           .then(() => {
             console.log("Successfully saved itemsData to DB.");
             res.redirect("/"); // Redirect to the root route after saving
@@ -82,15 +55,9 @@ app.get("/", function (req, res) {
             res.status(500).send("Error saving items to the database.");
             console.log(err);
           });
-        // redirect to the roote route 
-        res.redirect("/");
       } else {
-        // Render the list with existing items
-        // console.log(foundItems);
         res.render("list", { listTitle: "Today", newListItems: foundItems });
       }
-      // Display all data in log
-      //console.log(foundItems);
     })
     .catch((err) => {
       console.log(err);
@@ -98,26 +65,21 @@ app.get("/", function (req, res) {
     });
 });
 
-app.get("/:customListName", function (req, res) {
-  // lodah rule: _.capitalize([string=''])
+app.get("/:customListName", (req, res) => {
   const customListName = _.capitalize(req.params.customListName);
 
-  // Find the listName
   List.findOne({ name: customListName })
-    .then((foundList) => {
+    .then(foundList => {
       if (!foundList) {
-        // Create a new list 
         const list = new List({
           name: customListName,
-          items: ItemsData // Ensure ItemsData is defined in your scope
+          items: ItemsData
         });
 
-        // Save the new list and redirect
         return list.save().then(() => {
-          res.redirect("/" + customListName); // Redirect to the newly created list
+          res.redirect("/" + customListName);
         });
       } else {
-        // Show an existing list 
         res.render("list", { listTitle: foundList.name, newListItems: foundList.items });
       }
     })
@@ -127,22 +89,15 @@ app.get("/:customListName", function (req, res) {
     });
 });
 
-
-
-
-app.get("/about", function (req, res) {
+app.get("/about", (req, res) => {
   res.render("about");
 });
 
-
-
-app.post("/", function (req, res) {
+app.post("/", (req, res) => {
   const itemName = req.body.newItem;
   const listName = req.body.list;
 
-  const item = new Item({
-    name: itemName
-  });
+  const item = new Item({ name: itemName });
 
   if (listName === "Today") {
     item.save()
@@ -169,9 +124,7 @@ app.post("/", function (req, res) {
   }
 });
 
-
-
-app.post("/delete", function (req, res) {
+app.post("/delete", (req, res) => {
   const checkedItemId = req.body.checkbox;
   const listName = req.body.listName;
 
@@ -179,41 +132,34 @@ app.post("/delete", function (req, res) {
     Item.findByIdAndDelete(checkedItemId)
       .then(() => {
         console.log("Successfully deleted checked item.");
-        res.redirect("/"); // Redirect to the home page after deletion
+        res.redirect("/");
       })
-      .catch((err) => {
-        console.log(err); // Log the error if deletion fails
-        res.status(500).send("Error deleting item from the database."); // Optional error response
+      .catch(err => {
+        console.log(err);
+        res.status(500).send("Error deleting item from the database.");
       });
   } else {
     List.findOneAndUpdate(
       { name: listName },
       { $pull: { items: { _id: checkedItemId } } },
-      { new: true }  // This option returns the modified document
+      { new: true }
     )
       .then(foundList => {
         if (foundList) {
-          res.redirect("/" + listName); // Redirect if the list was found and updated
+          res.redirect("/" + listName);
         } else {
-          res.status(404).send("List not found"); // Handle case where list is not found
+          res.status(404).send("List not found");
         }
       })
       .catch(err => {
-        console.error(err); // Log the error if the update fails
-        res.status(500).send("Error deleting item from the list."); // Optional error response
+        console.error(err);
+        res.status(500).send("Error deleting item from the list.");
       });
   }
 });
 
-
-
-
 const PORT = process.env.PORT || 3000;
 
-// Start the server
 app.listen(PORT, () => {
   console.log(`Server is running on port ${PORT}`);
 });
-
-// // Export the app for Vercel
-// module.exports = app;
