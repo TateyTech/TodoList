@@ -8,6 +8,7 @@ require('dotenv').config();
 
 
 const app = express();
+const PORT = process.env.PORT || 3000;
 
 app.set('view engine', 'ejs');
 
@@ -164,14 +165,11 @@ app.post("/delete", async function (req, res) {
   }
 });
 
-const PORT = process.env.PORT || 3000;
+
+
 
 // Start the server
-if (require.main === module) {
-  app.listen(PORT, function () {
-    console.log(`Server started on port ${PORT}`);
-  });
-}
+app.listen(PORT, () => {
+  console.log(`Server is running on port ${PORT}`);
+});
 
-// Export the app for Vercel
-module.exports = app;
