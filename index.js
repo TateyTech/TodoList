@@ -1,8 +1,8 @@
 //jshint esversion:6
 
 const express = require("express");
-const bodyParser = require("body-parser");
 const mongoose = require("mongoose");
+const bodyParser = require("body-parser");
 const _ = require("lodash");
 require('dotenv').config();
 
@@ -17,7 +17,15 @@ app.use(express.static("public"));
 const mongoDb_connect_url = process.env.MONGODB_URI || "mongodb+srv://Admin-seiha:Seiha123@cluster0.8fulo.mongodb.net/todolistD"; // Default for local testing
 
 //Using New Database inside MongoDB
+// Connect to MongoDB
 mongoose.connect(mongoDb_connect_url)
+  .then(() => {
+    console.log("Successfully connected to MongoDB");
+  })
+  .catch((error) => {
+    console.error("MongoDB connection error:", error);
+  });
+
 
 //Schema 1: Create item Schema
 const itemsSchema = new mongoose.Schema({
@@ -58,7 +66,7 @@ const List = mongoose.model("List", listSchema);
 //   });
 
 
-app.get("/", function (req, res) {
+app.get("/",(req, res) => {
 
   // Find and log items
   Item.find({})
