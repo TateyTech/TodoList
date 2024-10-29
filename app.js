@@ -12,7 +12,8 @@ app.set('view engine', 'ejs');
 app.use(bodyParser.urlencoded({ extended: true }));
 app.use(express.static("public"));
 
-const mongoDb_connect_url = "mongodb+srv://Admin-seiha:Seiha123@cluster0.8fulo.mongodb.net/todolistDB";
+// Use environment variable for MongoDB connection URL
+const mongoDb_connect_url = process.env.MONGODB_URI || "mongodb+srv://Admin-seiha:Seiha123@cluster0.8fulo.mongodb.net/todolistD"; // Default for local testing
 
 //Using New Database inside MongoDB
 mongoose.connect(mongoDb_connect_url)
@@ -199,6 +200,11 @@ app.post("/delete", function (req, res) {
 
 
 
-app.listen(3000, function () {
-  console.log("Server started on port 3000");
-});
+// const PORT = process.env.PORT || 3000;
+
+// app.listen(PORT, function () {
+//   console.log(`Server started on port ${PORT}`);
+// });
+
+// Export the app for Vercel
+module.exports = app;
