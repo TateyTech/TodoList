@@ -200,11 +200,11 @@ app.post("/delete", function (req, res) {
 
 
 
-// const PORT = process.env.PORT || 3000;
+const PORT = process.env.PORT || 3000;
 
-// app.listen(PORT, function () {
-//   console.log(`Server started on port ${PORT}`);
-// });
+app.listen(PORT, function () {
+  console.log(`Server started on port ${PORT}`);
+});
 
-// Export the app for Vercel
-module.exports = app;
+// // Export the app for Vercel
+// module.exports = app;
