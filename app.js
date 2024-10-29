@@ -12,9 +12,10 @@ app.set('view engine', 'ejs');
 app.use(bodyParser.urlencoded({ extended: true }));
 app.use(express.static("public"));
 
+const mongoDb_connect_url = "mongodb+srv://Admin-seiha:Seiha123@cluster0.8fulo.mongodb.net/todolistDB";
 
 //Using New Database inside MongoDB
-mongoose.connect("mongodb+srv://Admin-seiha:Seiha123@cluster0.8fulo.mongodb.net/todolistDB")
+mongoose.connect(mongoDb_connect_url)
 
 //Schema 1: Create item Schema
 const itemsSchema = new mongoose.Schema({
