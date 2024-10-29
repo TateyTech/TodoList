@@ -1,4 +1,51 @@
 {
-    "source": "/feedback/((?!general).*)",
-    "destination": "/api/feedback/general"
+    "version": 2,
+    "builds": [
+        {
+            "src": "package.json",
+            "use": "@vercel/next"
+        }
+    ],
+    "routes": [
+        {
+            "src": "/api/(.*)",
+            "dest": "/api/index.ts"
+        },
+        {
+            "src": "/blog",
+            "status": 301,
+            "headers": {
+                "Location": "/blog/"
+            }
+        }
+    ],
+    "env": {
+        "API_URL": "https://api.example.com",
+        "NODE_ENV": "production"
+    },
+    "functions": {
+        "api/(.*)": {
+            "runtime": "edge",
+            "memory": 128,
+            "maxDuration": 5
+        }
+    },
+    "redirects": [
+        {
+            "source": "/old-url",
+            "destination": "/new-url",
+            "permanent": true
+        }
+    ],
+    "headers": [
+        {
+            "source": "/(.*)",
+            "headers": [
+                {
+                    "key": "X-Frame-Options",
+                    "value": "DENY"
+                }
+            ]
+        }
+    ]
 }
