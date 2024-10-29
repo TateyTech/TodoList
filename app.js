@@ -1,4 +1,4 @@
-//jshint esversion:6
+// jshint esversion:6
 
 const express = require("express");
 const bodyParser = require("body-parser");
@@ -15,29 +15,43 @@ app.use(express.static("public"));
 // Use environment variable for MongoDB connection URL
 const mongoDb_connect_url = process.env.MONGODB_URI || "mongodb+srv://Admin-seiha:Seiha123@cluster0.8fulo.mongodb.net/todolistD"; // Default for local testing
 
-//Using New Database inside MongoDB
-mongoose.connect(mongoDb_connect_url)
+const connectDB = async () => {
+  try {
+    await mongoose.connect(mongoDb_connect_url);
+    console.log("MongoDB connected.");
+  } catch (err) {
+    console.error(err.message);
+    process.exit(1);
+  }
+};
 
-//Schema 1: Create item Schema
+// Call connectDB when handling a request
+app.use(async (req, res, next) => {
+  if (mongoose.connection.readyState === 0) {
+    await connectDB();
+  }
+  next();
+});
+
+// Schema 1: Create item Schema
 const itemsSchema = new mongoose.Schema({
   name: {
     type: String,
     required: true
   }
-
 });
 
 // Create the item Model
 const Item = mongoose.model("Item", itemsSchema);
 
-//Array of the document to insert to the database 
+// Array of the document to insert to the database 
 const ItemsData = [
-  { name: "Welcome to your Todo List !" },
+  { name: "Welcome to your Todo List!" },
   { name: "Hit the + button to add a new item." },
   { name: "<-- Hit this to delete an item." }
 ];
 
-//Schema 2: for customListName 
+// Schema 2: for customListName 
 const listSchema = new mongoose.Schema({
   name: String,
   items: [itemsSchema]
@@ -46,89 +60,54 @@ const listSchema = new mongoose.Schema({
 // Model 2: 
 const List = mongoose.model("List", listSchema);
 
+app.get("/", async function (req, res) {
+  try {
+    const foundItems = await Item.find({});
 
-// // Find and log items
-// Item.find({})
-//   .then(foundItems => {
-//     console.log(foundItems);
-//   })
-//   .catch((err) => {
-//     console.log(err);
-//   });
-
-
-app.get("/", function (req, res) {
-
-  // Find and log items
-  Item.find({})
-
-    .then(foundItems => {
-      // if there is any items, insert the doc to the database 
-      if (foundItems.length === 0) {
-        Item.insertMany(ItemsData)
-          .then(() => {
-            console.log("Successfully saved itemsData to DB.");
-            res.redirect("/"); // Redirect to the root route after saving
-          })
-          .catch((err) => {
-            res.status(500).send("Error saving items to the database.");
-            console.log(err);
-          });
-        // redirect to the roote route 
-        res.redirect("/");
-      } else {
-        // Render the list with existing items
-        // console.log(foundItems);
-        res.render("list", { listTitle: "Today", newListItems: foundItems });
-      }
-      // Display all data in log
-      //console.log(foundItems);
-    })
-    .catch((err) => {
-      console.log(err);
-      res.status(500).send("Error retrieving items from the database.");
-    });
+    // If there are no items, insert the default documents
+    if (foundItems.length === 0) {
+      await Item.insertMany(ItemsData);
+      console.log("Successfully saved itemsData to DB.");
+      return res.redirect("/"); // Redirect to the root route after saving
+    } else {
+      // Render the list with existing items
+      return res.render("list", { listTitle: "Today", newListItems: foundItems });
+    }
+  } catch (err) {
+    console.error(err);
+    return res.status(500).send("Error retrieving items from the database.");
+  }
 });
 
-app.get("/:customListName", function (req, res) {
-  // lodah rule: _.capitalize([string=''])
+app.get("/:customListName", async function (req, res) {
   const customListName = _.capitalize(req.params.customListName);
 
-  // Find the listName
-  List.findOne({ name: customListName })
-    .then((foundList) => {
-      if (!foundList) {
-        // Create a new list 
-        const list = new List({
-          name: customListName,
-          items: ItemsData // Ensure ItemsData is defined in your scope
-        });
+  try {
+    const foundList = await List.findOne({ name: customListName });
 
-        // Save the new list and redirect
-        return list.save().then(() => {
-          res.redirect("/" + customListName); // Redirect to the newly created list
-        });
-      } else {
-        // Show an existing list 
-        res.render("list", { listTitle: foundList.name, newListItems: foundList.items });
-      }
-    })
-    .catch((err) => {
-      console.error(err);
-      res.status(500).send("Error finding or saving the list");
-    });
+    if (!foundList) {
+      // Create a new list 
+      const list = new List({
+        name: customListName,
+        items: ItemsData
+      });
+      await list.save();
+      return res.redirect("/" + customListName); // Redirect to the newly created list
+    } else {
+      // Show an existing list 
+      return res.render("list", { listTitle: foundList.name, newListItems: foundList.items });
+    }
+  } catch (err) {
+    console.error(err);
+    return res.status(500).send("Error finding or saving the list");
+  }
 });
-
-
-
 
 app.get("/about", function (req, res) {
   res.render("about");
 });
 
-
-
-app.post("/", function (req, res) {
+app.post("/", async function (req, res) {
   const itemName = req.body.newItem;
   const listName = req.body.list;
 
@@ -136,75 +115,61 @@ app.post("/", function (req, res) {
     name: itemName
   });
 
-  if (listName === "Today") {
-    item.save()
-      .then(() => res.redirect("/"))
-      .catch(err => {
-        console.error("Error saving item:", err);
-        res.status(500).send("An error occurred while saving the item.");
-      });
-  } else {
-    List.findOne({ name: listName })
-      .then(foundList => {
-        if (foundList) {
-          foundList.items.push(item);
-          return foundList.save();
-        } else {
-          throw new Error("List not found");
-        }
-      })
-      .then(() => res.redirect("/" + listName))
-      .catch(err => {
-        console.error("Error finding or saving the list:", err);
-        res.status(500).send("An error occurred while processing the list.");
-      });
+  try {
+    if (listName === "Today") {
+      await item.save();
+      return res.redirect("/");
+    } else {
+      const foundList = await List.findOne({ name: listName });
+      if (foundList) {
+        foundList.items.push(item);
+        await foundList.save();
+        return res.redirect("/" + listName);
+      } else {
+        throw new Error("List not found");
+      }
+    }
+  } catch (err) {
+    console.error("Error finding or saving the list:", err);
+    return res.status(500).send("An error occurred while processing the list.");
   }
 });
 
-
-
-app.post("/delete", function (req, res) {
+app.post("/delete", async function (req, res) {
   const checkedItemId = req.body.checkbox;
   const listName = req.body.listName;
 
-  if (listName === "Today") {
-    Item.findByIdAndDelete(checkedItemId)
-      .then(() => {
-        console.log("Successfully deleted checked item.");
-        res.redirect("/"); // Redirect to the home page after deletion
-      })
-      .catch((err) => {
-        console.log(err); // Log the error if deletion fails
-        res.status(500).send("Error deleting item from the database."); // Optional error response
-      });
-  } else {
-    List.findOneAndUpdate(
-      { name: listName },
-      { $pull: { items: { _id: checkedItemId } } },
-      { new: true }  // This option returns the modified document
-    )
-      .then(foundList => {
-        if (foundList) {
-          res.redirect("/" + listName); // Redirect if the list was found and updated
-        } else {
-          res.status(404).send("List not found"); // Handle case where list is not found
-        }
-      })
-      .catch(err => {
-        console.error(err); // Log the error if the update fails
-        res.status(500).send("Error deleting item from the list."); // Optional error response
-      });
+  try {
+    if (listName === "Today") {
+      await Item.findByIdAndDelete(checkedItemId);
+      console.log("Successfully deleted checked item.");
+      return res.redirect("/"); // Redirect to the home page after deletion
+    } else {
+      const foundList = await List.findOneAndUpdate(
+        { name: listName },
+        { $pull: { items: { _id: checkedItemId } } },
+        { new: true }  // This option returns the modified document
+      );
+      if (foundList) {
+        return res.redirect("/" + listName); // Redirect if the list was found and updated
+      } else {
+        return res.status(404).send("List not found"); // Handle case where list is not found
+      }
+    }
+  } catch (err) {
+    console.error(err); // Log the error if the update fails
+    return res.status(500).send("Error deleting item from the list."); // Optional error response
   }
 });
 
-
-
-
 const PORT = process.env.PORT || 3000;
 
-app.listen(PORT, function () {
-  console.log(`Server started on port ${PORT}`);
-});
+// Start the server
+if (require.main === module) {
+  app.listen(PORT, function () {
+    console.log(`Server started on port ${PORT}`);
+  });
+}
 
-// // Export the app for Vercel
-// module.exports = app;
+// Export the app for Vercel
+module.exports = app;
